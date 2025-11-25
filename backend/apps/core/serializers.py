@@ -28,7 +28,7 @@ class CompanySerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model"""
     
-    company_name = serializers.CharField(source='company.name', read_only=True)
+    company_name = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     
     class Meta:
@@ -39,6 +39,9 @@ class UserSerializer(serializers.ModelSerializer):
             'language', 'timezone', 'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else None
     
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
@@ -95,8 +98,8 @@ class ChangePasswordSerializer(serializers.Serializer):
 class AuditLogSerializer(serializers.ModelSerializer):
     """Serializer for Audit Log"""
     
-    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
-    company_name = serializers.CharField(source='company.name', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    company_name = serializers.SerializerMethodField()
     
     class Meta:
         model = AuditLog
@@ -106,11 +109,17 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'ip_address', 'user_agent', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+    
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() if obj.user else None
+    
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else None
 
 
 class NotificationSerializer(serializers.ModelSerializer):
     """Serializer for Notifications"""
-    user_name = serializers.CharField(source='user.full_name', read_only=True)
+    user_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Notification
@@ -120,6 +129,9 @@ class NotificationSerializer(serializers.ModelSerializer):
             'related_model', 'related_id', 'data', 'sent_at', 'created_at'
         ]
         read_only_fields = ['user', 'read_at', 'sent_at', 'created_at']
+    
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() if obj.user else obj.user.username if obj.user else None
 
 
 class WebhookLogSerializer(serializers.ModelSerializer):
