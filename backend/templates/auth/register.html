@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}Registro - CargoSnap ICTSI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .register-container {
+        min-height: 100vh;
+        padding: 3rem 0;
+        background: url('/static/images/bg-login.png') center center no-repeat;
+        background-size: cover;
+        position: relative;
+    }
+    
+    .register-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.85);
+        z-index: 0;
+    }
+    
+    .register-container > .container {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .register-card {
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    
+    .register-header {
+        background: linear-gradient(135deg, #0066CC 0%, #003366 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 2rem;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="register-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card register-card">
+                    <div class="register-header">
+                        <h2 class="mb-0"><i class="bi bi-person-plus"></i> Criar Nova Conta</h2>
+                        <p class="mb-0">Preencha os dados abaixo para se registrar</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_first_name" class="form-label">
+                                        <i class="bi bi-person"></i> Primeiro Nome *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control {% if form.first_name.errors %}is-invalid{% endif %}" 
+                                           id="id_first_name" 
+                                           name="first_name"
+                                           value="{{ form.first_name.value|default:'' }}"
+                                           required>
+                                    {% if form.first_name.errors %}
+                                    <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_last_name" class="form-label">
+                                        <i class="bi bi-person"></i> Sobrenome *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control {% if form.last_name.errors %}is-invalid{% endif %}" 
+                                           id="id_last_name" 
+                                           name="last_name"
+                                           value="{{ form.last_name.value|default:'' }}"
+                                           required>
+                                    {% if form.last_name.errors %}
+                                    <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_username" class="form-label">
+                                        <i class="bi bi-person-badge"></i> Usuário *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                                           id="id_username" 
+                                           name="username"
+                                           value="{{ form.username.value|default:'' }}"
+                                           required>
+                                    {% if form.username.errors %}
+                                    <div class="invalid-feedback">{{ form.username.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_email" class="form-label">
+                                        <i class="bi bi-envelope"></i> Email *
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                                           id="id_email" 
+                                           name="email"
+                                           value="{{ form.email.value|default:'' }}"
+                                           required>
+                                    {% if form.email.errors %}
+                                    <div class="invalid-feedback">{{ form.email.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_company" class="form-label">
+                                    <i class="bi bi-building"></i> Empresa *
+                                </label>
+                                <select class="form-select {% if form.company.errors %}is-invalid{% endif %}" 
+                                        id="id_company" 
+                                        name="company"
+                                        required>
+                                    <option value="">Selecione uma empresa...</option>
+                                    {% for company in companies %}
+                                    <option value="{{ company.id }}" {% if form.company.value == company.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ company.name }} ({{ company.company_type }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.company.errors %}
+                                <div class="invalid-feedback">{{ form.company.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_password1" class="form-label">
+                                        <i class="bi bi-lock"></i> Senha *
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control {% if form.password1.errors %}is-invalid{% endif %}" 
+                                           id="id_password1" 
+                                           name="password1"
+                                           required>
+                                    {% if form.password1.errors %}
+                                    <div class="invalid-feedback">{{ form.password1.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="text-muted">Mínimo 8 caracteres</small>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_password2" class="form-label">
+                                        <i class="bi bi-lock-fill"></i> Confirme a Senha *
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control {% if form.password2.errors %}is-invalid{% endif %}" 
+                                           id="id_password2" 
+                                           name="password2"
+                                           required>
+                                    {% if form.password2.errors %}
+                                    <div class="invalid-feedback">{{ form.password2.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    Eu aceito os <a href="#" target="_blank">termos de uso</a> e a 
+                                    <a href="#" target="_blank">política de privacidade</a>
+                                </label>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-person-plus"></i> Criar Conta
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <span class="text-muted">Já tem uma conta?</span>
+                            <a href="{% url 'login' %}" class="text-decoration-none fw-bold">
+                                Fazer Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - CargoSnap ICTSI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        background: url('/static/images/bg-login.png') center center no-repeat;
+        background-size: cover;
+        position: relative;
+    }
+    
+    .login-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.85);
+        z-index: 0;
+    }
+    
+    .login-container > .container {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .login-card {
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    
+    .login-header {
+        background: linear-gradient(135deg, #0066CC 0%, #003366 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .login-header i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card login-card">
+                    <div class="login-header">
+                        <i class="bi bi-container"></i>
+                        <h2 class="mb-0">CargoSnap ICTSI</h2>
+                        <p class="mb-0">Sistema de Inspeção de Containers</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <h4 class="text-center mb-4">Entrar na sua conta</h4>
+                        
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <label for="id_username" class="form-label">
+                                    <i class="bi bi-person"></i> Usuário
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg {% if form.username.errors %}is-invalid{% endif %}" 
+                                       id="id_username" 
+                                       name="username" 
+                                       placeholder="Digite seu usuário"
+                                       value="{{ form.username.value|default:'' }}"
+                                       required>
+                                {% if form.username.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.username.errors.0 }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_password" class="form-label">
+                                    <i class="bi bi-lock"></i> Senha
+                                </label>
+                                <input type="password" 
+                                       class="form-control form-control-lg {% if form.password.errors %}is-invalid{% endif %}" 
+                                       id="id_password" 
+                                       name="password" 
+                                       placeholder="Digite sua senha"
+                                       required>
+                                {% if form.password.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.password.errors.0 }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                <label class="form-check-label" for="remember">
+                                    Lembrar-me
+                                </label>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-box-arrow-in-right"></i> Entrar
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <a href="{% url 'password_reset' %}" class="text-decoration-none">
+                                <i class="bi bi-key"></i> Esqueceu sua senha?
+                            </a>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <span class="text-muted">Não tem uma conta?</span>
+                            <a href="{% url 'register' %}" class="text-decoration-none fw-bold">
+                                Registre-se
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-shield-check"></i> Acesso seguro e criptografado
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

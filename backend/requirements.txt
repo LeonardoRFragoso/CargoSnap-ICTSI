@@ -1,0 +1,26 @@
+# Django Core
+Django==5.0.1
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+django-filter==23.5
+
+# Database - IMPORTANTE: psycopg2-binary já está instalado, não reinstalar
+# psycopg2-binary já instalado manualmente
+
+# Authentication
+djangorestframework-simplejwt==5.3.1
+
+# Image Processing - versão com wheel para Windows
+Pillow>=10.0.0
+
+# API Documentation
+drf-spectacular==0.27.1
+
+# Environment Variables
+python-decouple==3.8
+
+# Utils
+python-dateutil==2.8.2
+
+# Production
+whitenoise==6.6.0

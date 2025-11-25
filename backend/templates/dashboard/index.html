@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - CargoSnap ICTSI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h2 class="mb-0">
+                        <i class="bi bi-speedometer2"></i> 
+                        Bem-vindo, {{ user.get_full_name|default:user.username }}!
+                    </h2>
+                    <p class="mb-0">{{ user.company.name }} - {{ user.get_role_display }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-0">Inspeções</h6>
+                            <h2 class="mb-0">{{ stats.total_inspections|default:0 }}</h2>
+                        </div>
+                        <i class="bi bi-clipboard-check" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-0">Concluídas</h6>
+                            <h2 class="mb-0">{{ stats.completed_inspections|default:0 }}</h2>
+                        </div>
+                        <i class="bi bi-check-circle" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-0">Ocorrências</h6>
+                            <h2 class="mb-0">{{ stats.total_issues|default:0 }}</h2>
+                        </div>
+                        <i class="bi bi-exclamation-triangle" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-0">Abertas</h6>
+                            <h2 class="mb-0">{{ stats.open_issues|default:0 }}</h2>
+                        </div>
+                        <i class="bi bi-bell" style="font-size: 3rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up"></i> Inspeções nos Últimos 30 Dias
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="inspectionsChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart"></i> Status das Inspeções
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Inspections -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Inspeções Recentes
+                    </h5>
+                    <a href="#" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Nova Inspeção
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Referência</th>
+                                    <th>Título</th>
+                                    <th>Status</th>
+                                    <th>Responsável</th>
+                                    <th>Data</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_inspections %}
+                                    {% for inspection in recent_inspections %}
+                                    <tr>
+                                        <td>{{ inspection.id }}</td>
+                                        <td><strong>{{ inspection.reference_number }}</strong></td>
+                                        <td>{{ inspection.title }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ inspection.status|lower }}">
+                                                {{ inspection.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ inspection.assigned_to.get_full_name|default:"N/A" }}</td>
+                                        <td>{{ inspection.created_at|date:"d/m/Y H:i" }}</td>
+                                        <td>
+                                            <a href="#" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                            <p class="mt-2">Nenhuma inspeção encontrada</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Inspections Timeline Chart
+    const ctx1 = document.getElementById('inspectionsChart');
+    new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+            datasets: [{
+                label: 'Inspeções',
+                data: [12, 19, 15, 25, 22, 18, 20],
+                borderColor: '#0066CC',
+                backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Status Pie Chart
+    const ctx2 = document.getElementById('statusChart');
+    new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['Concluídas', 'Em Progresso', 'Rascunho'],
+            datasets: [{
+                data: [{{ stats.completed_inspections|default:0 }}, 
+                       {{ stats.in_progress_inspections|default:0 }}, 
+                       {{ stats.draft_inspections|default:0 }}],
+                backgroundColor: ['#28a745', '#ffc107', '#6c757d']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true
+        }
+    });
+</script>
+{% endblock %}
