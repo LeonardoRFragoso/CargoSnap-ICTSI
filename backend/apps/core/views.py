@@ -337,9 +337,13 @@ def dashboard_view(request):
     
     company = request.user.company
     
-    # Statistics
-    inspections = Inspection.objects.filter(company=company)
-    issues = Issue.objects.filter(company=company)
+    # Statistics - Superusers see all data, regular users see only their company's data
+    if request.user.is_superuser:
+        inspections = Inspection.objects.all()
+        issues = Issue.objects.all()
+    else:
+        inspections = Inspection.objects.filter(company=company)
+        issues = Issue.objects.filter(company=company)
     
     stats = {
         'total_inspections': inspections.count(),
