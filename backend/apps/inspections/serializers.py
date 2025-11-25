@@ -155,6 +155,9 @@ class InspectionDetailSerializer(serializers.ModelSerializer):
 class InspectionCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating inspections"""
     
+    # Make company optional in input since it's auto-added from request.user
+    company = serializers.PrimaryKeyRelatedField(read_only=True)
+    
     class Meta:
         model = Inspection
         fields = [
@@ -167,14 +170,7 @@ class InspectionCreateUpdateSerializer(serializers.ModelSerializer):
             'vehicle_plate', 'vehicle_model', 'vehicle_year', 'vehicle_vin',
             'custom_fields', 'metadata'
         ]
-        read_only_fields = ['id']
-    
-    def validate(self, data):
-        # Ensure company matches user's company (multi-tenant)
-        request = self.context.get('request')
-        if request and hasattr(request, 'user'):
-            data['company'] = request.user.company
-        return data
+        read_only_fields = ['id', 'company']
 
 
 # Structure and Damage Serializers

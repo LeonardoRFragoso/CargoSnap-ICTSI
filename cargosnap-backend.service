@@ -1,0 +1,23 @@
+[Unit]
+Description=CargoSnap ICTSI - Django Backend
+After=network.target
+
+[Service]
+Type=simple
+User=lfragoso
+Group=lfragoso
+WorkingDirectory=/home/lfragoso/projetos/CargoSnap-ICTSI/backend
+Environment="PATH=/home/lfragoso/projetos/CargoSnap-ICTSI/backend/venv/bin"
+EnvironmentFile=/home/lfragoso/projetos/CargoSnap-ICTSI/backend/.env.production
+
+ExecStart=/home/lfragoso/projetos/CargoSnap-ICTSI/backend/venv/bin/python manage.py runserver 0.0.0.0:8501
+
+Restart=always
+RestartSec=10
+
+# Logs
+StandardOutput=append:/home/lfragoso/projetos/CargoSnap-ICTSI/backend/logs/django.log
+StandardError=append:/home/lfragoso/projetos/CargoSnap-ICTSI/backend/logs/django-error.log
+
+[Install]
+WantedBy=multi-user.target

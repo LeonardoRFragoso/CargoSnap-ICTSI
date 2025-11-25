@@ -1,4 +1,4 @@
-import { Bell, User, Home, FileText, BarChart3, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { Bell, User, Home, FileText, BarChart3, Settings, LogOut, ChevronDown, Container } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
@@ -7,6 +7,7 @@ import { cn } from '../../utils/cn'
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Inspeções', href: '/inspections', icon: FileText },
+  { name: 'CargoSnap', href: '/cargosnap', icon: Container },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Configurações', href: '/settings', icon: Settings },
 ]

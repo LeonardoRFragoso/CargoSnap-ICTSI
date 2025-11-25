@@ -84,6 +84,20 @@ class Inspection(BaseModel):
     vehicle_year = models.IntegerField(null=True, blank=True, help_text='Vehicle year')
     vehicle_vin = models.CharField(max_length=50, blank=True, help_text='Vehicle VIN number')
     
+    # CargoSnap Integration
+    cargosnap_file = models.ForeignKey(
+        'cargosnap_integration.CargoSnapFile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='inspections',
+        help_text='Arquivo CargoSnap vinculado a esta inspeção'
+    )
+    imported_from_cargosnap = models.BooleanField(
+        default=False,
+        help_text='Indica se esta inspeção foi importada do CargoSnap'
+    )
+    
     # Additional data (JSON for flexibility)
     custom_fields = models.JSONField(default=dict, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
@@ -110,6 +124,12 @@ class Inspection(BaseModel):
 
 class InspectionPhoto(BaseModel):
     """Photos taken during inspection"""
+    PHOTO_SOURCE_CHOICES = [
+        ('MOBILE', 'Câmera Mobile'),
+        ('UPLOAD', 'Upload Manual'),
+        ('CARGOSNAP', 'CargoSnap'),
+    ]
+    
     inspection = models.ForeignKey(Inspection, on_delete=models.CASCADE, related_name='photos')
     
     # File information
@@ -120,12 +140,23 @@ class InspectionPhoto(BaseModel):
     title = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
     caption = models.CharField(max_length=500, blank=True)
+    photo_source = models.CharField(max_length=20, choices=PHOTO_SOURCE_CHOICES, default='MOBILE')
     
     # Technical data
     taken_at = models.DateTimeField(auto_now_add=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     device_info = models.JSONField(default=dict, blank=True)  # Camera, phone model, etc.
+    
+    # CargoSnap Integration
+    cargosnap_upload = models.ForeignKey(
+        'cargosnap_integration.CargoSnapUpload',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='inspection_photos',
+        help_text='Upload CargoSnap de origem desta foto'
+    )
     
     # Organization
     sequence_number = models.IntegerField(default=0)

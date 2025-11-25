@@ -38,7 +38,7 @@ class WorkflowFormSerializer(serializers.ModelSerializer):
 
 
 class WorkflowStepSerializer(serializers.ModelSerializer):
-    form_links = serializers.SerializerMethodField()
+    forms = serializers.SerializerMethodField()
     
     class Meta:
         model = WorkflowStep
@@ -46,12 +46,23 @@ class WorkflowStepSerializer(serializers.ModelSerializer):
             'id', 'workflow', 'name', 'description', 'step_type', 'sequence',
             'is_required', 'is_skippable', 'min_photos', 'max_photos',
             'condition_field', 'condition_operator', 'condition_value',
-            'config', 'form_links', 'created_at'
+            'config', 'forms', 'created_at'
         ]
         read_only_fields = ['created_at']
     
-    def get_form_links(self, obj):
-        return WorkflowStepFormSerializer(obj.form_links.all(), many=True).data
+    def get_forms(self, obj):
+        """Return forms with their fields properly nested"""
+        form_links = obj.form_links.select_related('form').prefetch_related('form__fields').all()
+        return [
+            {
+                'id': link.form.id,
+                'name': link.form.name,
+                'description': link.form.description,
+                'is_required': link.is_required,
+                'fields': WorkflowFormFieldSerializer(link.form.fields.all(), many=True).data
+            }
+            for link in form_links
+        ]
 
 
 class WorkflowStepFormSerializer(serializers.ModelSerializer):

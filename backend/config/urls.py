@@ -36,6 +36,7 @@ urlpatterns = [
     path('api/reports/', include('apps.reports.urls')),
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/issues/', include('apps.issues.urls')),
+    path('api/cargosnap/', include('apps.cargosnap_integration.urls')),
 ]
 
 # Serve media files in development

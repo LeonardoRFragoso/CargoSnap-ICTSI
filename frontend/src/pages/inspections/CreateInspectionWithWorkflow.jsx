@@ -4,6 +4,7 @@ import { Loader2, Workflow as WorkflowIcon, Info, Package, FileText, MapPin, Use
 import { inspectionTypeService, inspectionService, photoService } from '../../services/inspectionService'
 import { workflowService } from '../../services/workflowService'
 import { useToast } from '../../hooks/useToast'
+import { useAuthStore } from '../../store/authStore'
 import Toast from '../../components/ui/Toast'
 import WorkflowExecution from '../../components/workflow/WorkflowExecution'
 import PageContainer from '../../components/layout/PageContainer'
@@ -17,6 +18,7 @@ import Button from '../../components/ui/Button'
  */
 export default function CreateInspectionWithWorkflow() {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [step, setStep] = useState('basic') // 'basic' or 'workflow'
   const [formData, setFormData] = useState({
     title: '',
@@ -69,6 +71,10 @@ export default function CreateInspectionWithWorkflow() {
       if (selectedWorkflowSummary) {
         // Fetch complete workflow details including steps
         const completeWorkflow = await workflowService.getById(selectedWorkflowSummary.id)
+        // eslint-disable-next-line no-console
+        console.log('Complete workflow loaded:', completeWorkflow)
+        // eslint-disable-next-line no-console
+        console.log('Workflow steps:', completeWorkflow?.steps)
         setSelectedWorkflow(completeWorkflow)
       } else {
         setSelectedWorkflow(null)
@@ -155,12 +161,25 @@ export default function CreateInspectionWithWorkflow() {
       const inspectionData = Object.entries(formData).reduce((acc, [key, value]) => {
         // Only include non-empty values
         if (value !== '' && value !== null && value !== undefined) {
-          acc[key] = value
+          // Convert cargo_weight to number
+          if (key === 'cargo_weight') {
+            acc[key] = parseFloat(value)
+          } else {
+            acc[key] = value
+          }
         }
         return acc
       }, {})
       
       inspectionData.status = 'IN_PROGRESS'
+      
+      // Company is automatically added by backend from request.user.company
+      // No need to send it from frontend
+      
+      // eslint-disable-next-line no-console
+      console.log('User data:', user)
+      // eslint-disable-next-line no-console
+      console.log('Inspection data to send:', inspectionData)
       
       const inspection = await inspectionService.create(inspectionData)
       setCreatedInspection(inspection)

@@ -6,6 +6,7 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db import models
 from apps.core.permissions import (
     IsAuthenticated, IsSameCompany, CanCreateInspection,
     CanEditInspection, CanDeleteInspection, IsAdminOrManager
@@ -114,15 +115,185 @@ class InspectionViewSet(viewsets.ModelViewSet):
 
 
 class InspectionPhotoViewSet(viewsets.ModelViewSet):
-    """CRUD for Inspection Photos"""
+    """CRUD for Inspection Photos with mobile camera support"""
     queryset = InspectionPhoto.objects.all()
     serializer_class = InspectionPhotoSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['inspection']
+    filterset_fields = ['inspection', 'photo_source']
     
     def get_queryset(self):
         return self.queryset.filter(inspection__company=self.request.user.company)
+    
+    @action(detail=False, methods=['post'], parser_classes=['parsers.MultiPartParser', 'parsers.FormParser'])
+    def upload_from_mobile(self, request):
+        """
+        Upload de foto via câmera mobile com metadados
+        
+        Form data:
+            - inspection_id: ID da inspeção
+            - photo: Arquivo de imagem
+            - title: Título da foto (opcional)
+            - description: Descrição (opcional)
+            - latitude: Latitude GPS (opcional)
+            - longitude: Longitude GPS (opcional)
+            - device_model: Modelo do dispositivo (opcional)
+            - device_os: Sistema operacional (opcional)
+        """
+        from django.utils import timezone
+        import json
+        
+        try:
+            inspection_id = request.data.get('inspection_id')
+            photo_file = request.FILES.get('photo')
+            
+            if not inspection_id or not photo_file:
+                return Response({
+                    'error': 'inspection_id e photo são obrigatórios'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Buscar inspeção
+            inspection = Inspection.objects.get(
+                id=inspection_id,
+                company=request.user.company
+            )
+            
+            # Próximo número de sequência
+            max_sequence = InspectionPhoto.objects.filter(
+                inspection=inspection
+            ).aggregate(max_seq=models.Max('sequence_number'))['max_seq'] or 0
+            
+            # Extrair metadados
+            latitude = request.data.get('latitude')
+            longitude = request.data.get('longitude')
+            device_model = request.data.get('device_model', '')
+            device_os = request.data.get('device_os', '')
+            
+            # Criar device_info
+            device_info = {
+                'source': 'mobile_camera',
+                'model': device_model,
+                'os': device_os,
+                'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+                'uploaded_at': timezone.now().isoformat()
+            }
+            
+            # Criar foto
+            photo = InspectionPhoto.objects.create(
+                inspection=inspection,
+                photo=photo_file,
+                title=request.data.get('title', f'Foto {max_sequence + 1}'),
+                description=request.data.get('description', ''),
+                photo_source='MOBILE',
+                latitude=float(latitude) if latitude else None,
+                longitude=float(longitude) if longitude else None,
+                device_info=device_info,
+                sequence_number=max_sequence + 1,
+                taken_at=timezone.now()
+            )
+            
+            serializer = self.get_serializer(photo)
+            return Response({
+                'status': 'success',
+                'message': 'Foto enviada com sucesso',
+                'photo': serializer.data
+            }, status=status.HTTP_201_CREATED)
+            
+        except Inspection.DoesNotExist:
+            return Response({
+                'error': 'Inspeção não encontrada'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro ao fazer upload de foto mobile: {str(e)}")
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'])
+    def batch_upload_from_mobile(self, request):
+        """
+        Upload em lote de múltiplas fotos via mobile
+        
+        JSON body:
+            - inspection_id: ID da inspeção
+            - photos: Array de objetos com dados das fotos em base64
+        """
+        import base64
+        from django.core.files.base import ContentFile
+        from django.utils import timezone
+        
+        try:
+            inspection_id = request.data.get('inspection_id')
+            photos_data = request.data.get('photos', [])
+            
+            if not inspection_id or not photos_data:
+                return Response({
+                    'error': 'inspection_id e photos são obrigatórios'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            inspection = Inspection.objects.get(
+                id=inspection_id,
+                company=request.user.company
+            )
+            
+            uploaded_photos = []
+            max_sequence = InspectionPhoto.objects.filter(
+                inspection=inspection
+            ).aggregate(max_seq=models.Max('sequence_number'))['max_seq'] or 0
+            
+            for idx, photo_data in enumerate(photos_data):
+                try:
+                    # Decodificar base64
+                    image_data = photo_data.get('data')
+                    if image_data and 'base64,' in image_data:
+                        format, imgstr = image_data.split('base64,')
+                        ext = format.split('/')[-1].split(';')[0]
+                        
+                        # Criar arquivo
+                        filename = f"mobile_{timezone.now().strftime('%Y%m%d%H%M%S')}_{idx}.{ext}"
+                        photo_file = ContentFile(base64.b64decode(imgstr), name=filename)
+                        
+                        # Criar foto
+                        photo = InspectionPhoto.objects.create(
+                            inspection=inspection,
+                            photo=photo_file,
+                            title=photo_data.get('title', f'Foto {max_sequence + idx + 1}'),
+                            description=photo_data.get('description', ''),
+                            photo_source='MOBILE',
+                            latitude=float(photo_data.get('latitude')) if photo_data.get('latitude') else None,
+                            longitude=float(photo_data.get('longitude')) if photo_data.get('longitude') else None,
+                            device_info=photo_data.get('device_info', {}),
+                            sequence_number=max_sequence + idx + 1,
+                            taken_at=timezone.now()
+                        )
+                        
+                        uploaded_photos.append(photo.id)
+                        
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Erro ao processar foto {idx}: {str(e)}")
+                    continue
+            
+            return Response({
+                'status': 'success',
+                'message': f'{len(uploaded_photos)} fotos enviadas com sucesso',
+                'photo_ids': uploaded_photos
+            }, status=status.HTTP_201_CREATED)
+            
+        except Inspection.DoesNotExist:
+            return Response({
+                'error': 'Inspeção não encontrada'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro no upload em lote: {str(e)}")
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class InspectionVideoViewSet(viewsets.ModelViewSet):

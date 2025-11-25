@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'drf_spectacular',
+    'django_filters',
     
     # Local apps
     'apps.core',
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
     'apps.reports',
     'apps.analytics',
     'apps.issues',
+    'apps.cargosnap_integration',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,21 @@
+[Unit]
+Description=CargoSnap ICTSI - React Frontend
+After=network.target cargosnap-backend.service
+
+[Service]
+Type=simple
+User=lfragoso
+Group=lfragoso
+WorkingDirectory=/home/lfragoso/projetos/CargoSnap-ICTSI/frontend
+
+ExecStart=/usr/bin/npm run dev -- --host 0.0.0.0 --port 3000
+
+Restart=always
+RestartSec=10
+
+# Logs
+StandardOutput=append:/home/lfragoso/projetos/CargoSnap-ICTSI/backend/logs/vite.log
+StandardError=append:/home/lfragoso/projetos/CargoSnap-ICTSI/backend/logs/vite-error.log
+
+[Install]
+WantedBy=multi-user.target

@@ -11,6 +11,8 @@ import Dashboard from './pages/Dashboard'
 import InspectionsList from './pages/inspections/InspectionsList'
 import InspectionDetail from './pages/inspections/InspectionDetail'
 import CreateInspectionWithWorkflow from './pages/inspections/CreateInspectionWithWorkflow'
+import CargoSnapList from './pages/cargosnap/CargoSnapList'
+import CargoSnapDetail from './pages/cargosnap/CargoSnapDetail'
 import Profile from './pages/Profile'
 import NotFound from './pages/NotFound'
 
@@ -45,6 +47,8 @@ function App() {
         <Route path="/inspections" element={<InspectionsList />} />
         <Route path="/inspections/:id" element={<InspectionDetail />} />
         <Route path="/inspections/new" element={<CreateInspectionWithWorkflow />} />
+        <Route path="/cargosnap" element={<CargoSnapList />} />
+        <Route path="/cargosnap/:id" element={<CargoSnapDetail />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
 

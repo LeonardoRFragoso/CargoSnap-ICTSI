@@ -19,9 +19,37 @@ export default function WorkflowExecution({ workflow, onComplete, onCancel }) {
   
   const { success, error: showError, warning } = useToast()
   
-  const currentStep = workflow.steps[currentStepIndex]
-  const totalSteps = workflow.steps.length
-  const progress = ((currentStepIndex + 1) / totalSteps) * 100
+  // Debug logs
+  // eslint-disable-next-line no-console
+  console.log('WorkflowExecution - workflow:', workflow)
+  // eslint-disable-next-line no-console
+  console.log('WorkflowExecution - workflow.steps:', workflow?.steps)
+  
+  const currentStep = workflow?.steps?.[currentStepIndex]
+  const totalSteps = workflow?.steps?.length || 0
+  const progress = totalSteps > 0 ? ((currentStepIndex + 1) / totalSteps) * 100 : 0
+  
+  // eslint-disable-next-line no-console
+  console.log('WorkflowExecution - currentStep:', currentStep)
+  
+  // Safety check
+  if (!workflow || !workflow.steps || workflow.steps.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-sm p-8 max-w-md text-center">
+          <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Workflow Vazio</h2>
+          <p className="text-gray-600 mb-6">Este workflow não possui passos configurados.</p>
+          <button
+            onClick={onCancel}
+            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Initialize step data
   useEffect(() => {
