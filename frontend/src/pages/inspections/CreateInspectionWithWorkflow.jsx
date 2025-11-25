@@ -143,6 +143,11 @@ export default function CreateInspectionWithWorkflow() {
       return
     }
 
+    if (!formData.inspection_type) {
+      showError('Tipo de inspeção é obrigatório')
+      return
+    }
+
     try {
       setLoading(true)
       
