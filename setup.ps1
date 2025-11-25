@@ -61,6 +61,10 @@ python manage.py create_companies
 Write-Host "Populating structures and damage types..." -ForegroundColor Yellow
 python manage.py populate_structures_damages
 
+# Create default workflows
+Write-Host "Creating default workflows..." -ForegroundColor Yellow
+python manage.py create_default_workflows
+
 # Create superuser
 Write-Host ""
 Write-Host "Create a superuser account:" -ForegroundColor Cyan

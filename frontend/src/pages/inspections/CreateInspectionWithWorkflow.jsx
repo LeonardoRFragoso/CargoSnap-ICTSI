@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Workflow as WorkflowIcon, Info, Package } from 'lucide-react'
+import { Loader2, Workflow as WorkflowIcon, Info, Package, FileText, MapPin, User, Ship, Container, Truck } from 'lucide-react'
 import { inspectionTypeService, inspectionService, photoService } from '../../services/inspectionService'
 import { workflowService } from '../../services/workflowService'
 import { useToast } from '../../hooks/useToast'
@@ -50,6 +50,38 @@ export default function CreateInspectionWithWorkflow() {
   
   const { toasts, hideToast, success, error: showError } = useToast()
 
+  // Load workflow when type changes
+  const loadWorkflowForType = useCallback(async (typeId) => {
+    try {
+      setLoadingWorkflow(true)
+      const data = await workflowService.getByInspectionType(typeId)
+      
+      let workflows = []
+      if (Array.isArray(data)) {
+        workflows = data
+      } else if (data.results && Array.isArray(data.results)) {
+        workflows = data.results
+      }
+      
+      // Find default workflow or use first one
+      const selectedWorkflowSummary = workflows.find(w => w.is_default) || workflows[0]
+      
+      if (selectedWorkflowSummary) {
+        // Fetch complete workflow details including steps
+        const completeWorkflow = await workflowService.getById(selectedWorkflowSummary.id)
+        setSelectedWorkflow(completeWorkflow)
+      } else {
+        setSelectedWorkflow(null)
+      }
+    } catch {
+      // Silently handle error - workflow is optional
+      // User will see "Nenhum workflow configurado" message
+      setSelectedWorkflow(null)
+    } finally {
+      setLoadingWorkflow(false)
+    }
+  }, [])
+
   // Load inspection types
   useEffect(() => {
     const fetchInspectionTypes = async () => {
@@ -87,32 +119,7 @@ export default function CreateInspectionWithWorkflow() {
     }
     
     fetchInspectionTypes()
-  }, [showError])
-
-  // Load workflow when type changes
-  const loadWorkflowForType = async (typeId) => {
-    try {
-      setLoadingWorkflow(true)
-      const data = await workflowService.getByInspectionType(typeId)
-      
-      let workflows = []
-      if (Array.isArray(data)) {
-        workflows = data
-      } else if (data.results && Array.isArray(data.results)) {
-        workflows = data.results
-      }
-      
-      // Find default workflow or use first one
-      const defaultWorkflow = workflows.find(w => w.is_default) || workflows[0]
-      setSelectedWorkflow(defaultWorkflow || null)
-    } catch {
-      // Silently handle error - workflow is optional
-      // User will see "Nenhum workflow configurado" message
-      setSelectedWorkflow(null)
-    } finally {
-      setLoadingWorkflow(false)
-    }
-  }
+  }, [loadWorkflowForType, showError])
 
   // Handle type change
   const handleTypeChange = (e) => {
@@ -157,7 +164,25 @@ export default function CreateInspectionWithWorkflow() {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Error creating inspection:', err)
-      showError('Erro ao criar inspeção')
+      
+      // Show specific validation errors if available
+      if (err.response?.data) {
+        const errors = err.response.data
+        // eslint-disable-next-line no-console
+        console.error('Validation errors:', errors)
+        
+        // Show first error message
+        const firstError = Object.values(errors)[0]
+        if (Array.isArray(firstError)) {
+          showError(firstError[0])
+        } else if (typeof firstError === 'string') {
+          showError(firstError)
+        } else {
+          showError('Erro ao criar inspeção')
+        }
+      } else {
+        showError('Erro ao criar inspeção')
+      }
     } finally {
       setLoading(false)
     }
@@ -219,70 +244,90 @@ export default function CreateInspectionWithWorkflow() {
 
   // Render basic info step
   return (
-    <PageContainer className="max-w-4xl">
-      <PageHeader
-        title="Nova Inspeção"
-        description="Preencha as informações básicas e siga o workflow de inspeção"
-        icon={Package}
-        showBackButton
-      />
+    <PageContainer>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Modern Header with Gradient */}
+        <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl shadow-2xl p-8 text-white overflow-hidden">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl transform translate-x-32 -translate-y-32"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-400 rounded-full blur-3xl transform -translate-x-48 translate-y-48"></div>
+          </div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Package className="h-8 w-8" />
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight">Nova Inspeção</h1>
+            </div>
+            <p className="text-blue-100 text-base">Preencha as informações básicas e siga o workflow de inspeção</p>
+          </div>
+        </div>
 
-      <Card>
-        <div className="space-y-6">
+        <Card className="shadow-lg border border-gray-100">
+        <div className="space-y-8">
+          {/* Tipo de Inspeção Section */}
           <div>
-            <label htmlFor="inspection_type" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="inspection_type" className="block text-sm font-semibold text-gray-900 mb-2">
               Tipo de Inspeção *
             </label>
-            <select
-              id="inspection_type"
-              name="inspection_type"
-              value={formData.inspection_type || ''}
-              onChange={handleTypeChange}
-              disabled={loadingTypes}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loadingTypes ? (
-                <option>Carregando...</option>
-              ) : (
-                inspectionTypes.map(type => (
-                  <option key={type.id} value={type.id}>{type.name}</option>
-                ))
-              )}
-            </select>
+            <div className="relative">
+              <select
+                id="inspection_type"
+                name="inspection_type"
+                value={formData.inspection_type || ''}
+                onChange={handleTypeChange}
+                disabled={loadingTypes}
+                className="mt-1 block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:bg-gray-100 transition-all"
+              >
+                {loadingTypes ? (
+                  <option>Carregando...</option>
+                ) : (
+                  inspectionTypes.map(type => (
+                    <option key={type.id} value={type.id}>{type.name}</option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
 
-          {/* Workflow Info */}
+          {/* Workflow Info - Modern Design */}
           {loadingWorkflow ? (
-            <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-lg">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-              <span className="text-sm text-gray-600">Carregando workflow...</span>
+            <div className="flex items-center gap-3 p-5 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-gray-700">Carregando workflow...</span>
             </div>
           ) : selectedWorkflow ? (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <WorkflowIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-blue-600 rounded-xl shadow-lg">
+                  <WorkflowIcon className="h-6 w-6 text-white" />
+                </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-medium text-blue-900">
+                  <h3 className="text-base font-bold text-blue-900 mb-1">
                     Workflow: {selectedWorkflow.name}
                   </h3>
                   {selectedWorkflow.description && (
-                    <p className="mt-1 text-sm text-blue-700">{selectedWorkflow.description}</p>
+                    <p className="text-sm text-blue-700 mb-3">{selectedWorkflow.description}</p>
                   )}
-                  <div className="mt-2 text-sm text-blue-700">
-                    <strong>{selectedWorkflow.steps?.length || 0} passos</strong> a serem executados
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/80 rounded-lg border border-blue-200">
+                    <span className="text-sm font-semibold text-blue-900">{selectedWorkflow.steps?.length || 0} passos</span>
+                    <span className="text-sm text-blue-600">a serem executados</span>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-yellow-500 rounded-xl shadow-lg">
+                  <Info className="h-6 w-6 text-white" />
+                </div>
                 <div>
-                  <h3 className="text-sm font-medium text-yellow-900">
+                  <h3 className="text-base font-bold text-yellow-900 mb-1">
                     Nenhum workflow configurado
                   </h3>
-                  <p className="mt-1 text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-700">
                     Este tipo de inspeção não possui um workflow associado. A inspeção será criada sem passos guiados.
                   </p>
                 </div>
@@ -290,81 +335,94 @@ export default function CreateInspectionWithWorkflow() {
             </div>
           )}
 
-          {/* Title */}
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-              Título *
-            </label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="Ex: Inspeção Container ABCD1234"
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-            />
-          </div>
+          {/* Basic Information Section */}
+          <div className="space-y-6 p-6 bg-gray-50 rounded-xl border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Informações Básicas
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label htmlFor="title" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Título *
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  placeholder="Ex: Inspeção Container ABCD1234"
+                  required
+                  className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                />
+              </div>
 
-          {/* External Reference */}
-          <div>
-            <label htmlFor="external_reference" className="block text-sm font-medium text-gray-700">
-              Referência Externa
-            </label>
-            <input
-              type="text"
-              id="external_reference"
-              name="external_reference"
-              value={formData.external_reference}
-              onChange={handleChange}
-              placeholder="Ex: BL123456, Pedido #789"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-            />
-          </div>
+              <div>
+                <label htmlFor="external_reference" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Referência Externa
+                </label>
+                <input
+                  type="text"
+                  id="external_reference"
+                  name="external_reference"
+                  value={formData.external_reference}
+                  onChange={handleChange}
+                  placeholder="Ex: BL123456, Pedido #789"
+                  className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                />
+              </div>
 
-          {/* Location */}
-          <div>
-            <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-              Local
-            </label>
-            <input
-              type="text"
-              id="location"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="Ex: Armazém 5, Porto de Santos"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-            />
-          </div>
+              <div>
+                <label htmlFor="location" className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1">
+                  <MapPin className="h-4 w-4 text-gray-600" />
+                  Local
+                </label>
+                <input
+                  type="text"
+                  id="location"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Ex: Armazém 5, Porto de Santos"
+                  className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                />
+              </div>
 
-          {/* Customer Name */}
-          <div>
-            <label htmlFor="customer_name" className="block text-sm font-medium text-gray-700">
-              Nome do Cliente
-            </label>
-            <input
-              type="text"
-              id="customer_name"
-              name="customer_name"
-              value={formData.customer_name}
-              onChange={handleChange}
-              placeholder="Ex: Empresa ABC Ltda"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-            />
+              <div>
+                <label htmlFor="customer_name" className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1">
+                  <User className="h-4 w-4 text-gray-600" />
+                  Nome do Cliente
+                </label>
+                <input
+                  type="text"
+                  id="customer_name"
+                  name="customer_name"
+                  value={formData.customer_name}
+                  onChange={handleChange}
+                  placeholder="Ex: Empresa ABC Ltda"
+                  className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Container-specific fields */}
           {(inspectionTypes.find(t => t.id === formData.inspection_type)?.name?.toLowerCase().includes('container') ||
             inspectionTypes.find(t => t.id === formData.inspection_type)?.name?.toLowerCase().includes('carga')) && (
             <>
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações do Container/Carga</h3>
+              <div className="p-6 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border-2 border-cyan-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <div className="p-2 bg-cyan-600 rounded-lg">
+                    <Container className="h-5 w-5 text-white" />
+                  </div>
+                  Informações do Container/Carga
+                </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="container_number" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="container_number" className="block text-sm font-semibold text-gray-900 mb-2">
                       Número do Container
                     </label>
                     <input
@@ -374,12 +432,12 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.container_number}
                       onChange={handleChange}
                       placeholder="Ex: ABCD1234567"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="seal_number" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="seal_number" className="block text-sm font-semibold text-gray-900 mb-2">
                       Número do Lacre
                     </label>
                     <input
@@ -389,12 +447,13 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.seal_number}
                       onChange={handleChange}
                       placeholder="Ex: SEAL123456"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="booking_number" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="booking_number" className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1">
+                      <FileText className="h-4 w-4 text-gray-600" />
                       Booking / BL Number
                     </label>
                     <input
@@ -404,12 +463,12 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.booking_number}
                       onChange={handleChange}
                       placeholder="Ex: BL123456789"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="container_type" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="container_type" className="block text-sm font-semibold text-gray-900 mb-2">
                       Tipo de Container
                     </label>
                     <select
@@ -417,7 +476,7 @@ export default function CreateInspectionWithWorkflow() {
                       name="container_type"
                       value={formData.container_type}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all"
                     >
                       <option value="">Selecione...</option>
                       <option value="20ft Standard">20ft Standard</option>
@@ -433,7 +492,8 @@ export default function CreateInspectionWithWorkflow() {
                   </div>
 
                   <div>
-                    <label htmlFor="vessel_name" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="vessel_name" className="block text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1">
+                      <Ship className="h-4 w-4 text-gray-600" />
                       Nome do Navio
                     </label>
                     <input
@@ -443,12 +503,12 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.vessel_name}
                       onChange={handleChange}
                       placeholder="Ex: MSC Mediterranean"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="voyage_number" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="voyage_number" className="block text-sm font-semibold text-gray-900 mb-2">
                       Número da Viagem
                     </label>
                     <input
@@ -458,13 +518,14 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.voyage_number}
                       onChange={handleChange}
                       placeholder="Ex: V123"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all"
                     />
+                </div>
                 </div>
                 
                 <div className="mt-6 space-y-6">
                   <div>
-                    <label htmlFor="cargo_description" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="cargo_description" className="block text-sm font-semibold text-gray-900 mb-2">
                       Descrição da Carga
                     </label>
                     <textarea
@@ -472,14 +533,14 @@ export default function CreateInspectionWithWorkflow() {
                       name="cargo_description"
                       value={formData.cargo_description}
                       onChange={handleChange}
-                      rows={3}
+                      rows={4}
                       placeholder="Descreva o tipo de carga, quantidade, embalagem, etc."
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all resize-none"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="cargo_weight" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="cargo_weight" className="block text-sm font-semibold text-gray-900 mb-2">
                       Peso da Carga (kg)
                     </label>
                     <input
@@ -490,7 +551,7 @@ export default function CreateInspectionWithWorkflow() {
                       onChange={handleChange}
                       placeholder="Ex: 25000"
                       step="0.01"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -501,12 +562,17 @@ export default function CreateInspectionWithWorkflow() {
           {/* Vehicle-specific fields */}
           {inspectionTypes.find(t => t.id === formData.inspection_type)?.name?.toLowerCase().includes('veículo') && (
             <>
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações do Veículo</h3>
+              <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <div className="p-2 bg-purple-600 rounded-lg">
+                    <Truck className="h-5 w-5 text-white" />
+                  </div>
+                  Informações do Veículo
+                </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="vehicle_plate" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="vehicle_plate" className="block text-sm font-semibold text-gray-900 mb-2">
                       Placa do Veículo *
                     </label>
                     <input
@@ -516,12 +582,12 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.vehicle_plate}
                       onChange={handleChange}
                       placeholder="Ex: ABC-1234"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="vehicle_model" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="vehicle_model" className="block text-sm font-semibold text-gray-900 mb-2">
                       Modelo do Veículo
                     </label>
                     <input
@@ -531,12 +597,12 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.vehicle_model}
                       onChange={handleChange}
                       placeholder="Ex: Scania R450"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="vehicle_year" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="vehicle_year" className="block text-sm font-semibold text-gray-900 mb-2">
                       Ano do Veículo
                     </label>
                     <input
@@ -548,12 +614,12 @@ export default function CreateInspectionWithWorkflow() {
                       placeholder="Ex: 2023"
                       min="1900"
                       max="2099"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="vehicle_vin" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="vehicle_vin" className="block text-sm font-semibold text-gray-900 mb-2">
                       Chassi (VIN)
                     </label>
                     <input
@@ -563,7 +629,7 @@ export default function CreateInspectionWithWorkflow() {
                       value={formData.vehicle_vin}
                       onChange={handleChange}
                       placeholder="Ex: 9BWZZZ377VT004251"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      className="block w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -572,11 +638,12 @@ export default function CreateInspectionWithWorkflow() {
           )}
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end gap-3">
+        {/* Actions - Modern Design */}
+        <div className="mt-8 pt-6 border-t-2 border-gray-200 flex justify-end gap-4">
           <Button
             variant="secondary"
             onClick={() => navigate(-1)}
+            className="px-6 py-3 text-base font-semibold"
           >
             Cancelar
           </Button>
@@ -584,8 +651,9 @@ export default function CreateInspectionWithWorkflow() {
             onClick={createInspection}
             disabled={!formData.title.trim()}
             loading={loading}
+            className="px-8 py-3 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
           >
-            {selectedWorkflow ? 'Criar e Iniciar Workflow' : 'Criar Inspeção'}
+            {selectedWorkflow ? '🚀 Criar e Iniciar Workflow' : '✓ Criar Inspeção'}
           </Button>
         </div>
       </Card>
@@ -600,6 +668,7 @@ export default function CreateInspectionWithWorkflow() {
           duration={toast.duration}
         />
       ))}
+      </div>
     </PageContainer>
   )
 }

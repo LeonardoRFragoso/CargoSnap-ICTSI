@@ -1,13 +1,12 @@
 /**
  * PageContainer Component
  * Container padrão para todas as páginas do sistema
+ * MainLayout já fornece padding horizontal e max-width, este componente apenas adiciona padding vertical
  */
 export default function PageContainer({ children, className = '' }) {
   return (
-    <div className={`min-h-screen bg-gray-50 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {children}
-      </div>
+    <div className={`space-y-6 ${className}`}>
+      {children}
     </div>
   )
 }
