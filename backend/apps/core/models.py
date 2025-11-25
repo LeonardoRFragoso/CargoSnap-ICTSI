@@ -3,7 +3,7 @@ Core models for CargoSnap ICTSI
 Multi-tenant system with Company and User models
 """
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager as BaseUserManager
 from django.utils.translation import gettext_lazy as _
 
 
@@ -53,6 +53,29 @@ class Company(models.Model):
         return self.name
 
 
+class UserManager(BaseUserManager):
+    """Custom user manager to handle superuser creation without company"""
+    
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        """
+        Create and save a SuperUser without requiring a company.
+        Superusers are global administrators not tied to specific companies.
+        """
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'ADMIN')
+        
+        # Remove company from extra_fields if present, superusers don't need it
+        extra_fields.pop('company', None)
+        
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        
+        return self._create_user(username, email, password, **extra_fields)
+
+
 class User(AbstractUser):
     """
     Custom User model with company association
@@ -69,7 +92,10 @@ class User(AbstractUser):
         Company,
         on_delete=models.CASCADE,
         related_name='users',
-        verbose_name=_('Empresa')
+        verbose_name=_('Empresa'),
+        null=True,
+        blank=True,
+        help_text=_('Empresa associada ao usuário. Superusuários podem não ter empresa.')
     )
     
     role = models.CharField(
@@ -92,13 +118,18 @@ class User(AbstractUser):
     created_at = models.DateTimeField(_('Criado em'), auto_now_add=True)
     updated_at = models.DateTimeField(_('Atualizado em'), auto_now=True)
     
+    objects = UserManager()
+    
     class Meta:
         verbose_name = _('Usuário')
         verbose_name_plural = _('Usuários')
         ordering = ['company', 'first_name', 'last_name']
     
     def __str__(self):
-        return f"{self.get_full_name()} ({self.company.name})"
+        full_name = self.get_full_name() or self.username
+        if self.company:
+            return f"{full_name} ({self.company.name})"
+        return f"{full_name} (Superusuário)"
     
     @property
     def is_admin(self):
