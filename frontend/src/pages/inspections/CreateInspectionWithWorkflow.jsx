@@ -151,10 +151,16 @@ export default function CreateInspectionWithWorkflow() {
     try {
       setLoading(true)
       
-      const inspectionData = {
-        ...formData,
-        status: 'IN_PROGRESS',
-      }
+      // Clean empty string fields to avoid validation errors
+      const inspectionData = Object.entries(formData).reduce((acc, [key, value]) => {
+        // Only include non-empty values
+        if (value !== '' && value !== null && value !== undefined) {
+          acc[key] = value
+        }
+        return acc
+      }, {})
+      
+      inspectionData.status = 'IN_PROGRESS'
       
       const inspection = await inspectionService.create(inspectionData)
       setCreatedInspection(inspection)
